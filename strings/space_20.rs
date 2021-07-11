@@ -2,8 +2,38 @@
 // everything being in a utf-8, makes this probelm non-trivial to modify string in place.
 // not implementing this until i find a suitable solution for it.
 
+// https://stackoverflow.com/questions/68151743/is-there-a-way-to-update-a-string-in-place-in-rust
+fn space_20(text: &mut String) {
+  const SPACE_REPLACEMENT: &[u8] = b"%20";
+  const REPL_LENGTH: usize = SPACE_REPLACEMENT.len();
 
-fn space_20(sentence: &mut String) {
+  // operating on bytes for simplicity
+  let mut buffer = std::mem::take(text).into_bytes();
+  let old_len = buffer.len();
+
+  let space_count = buffer.iter().filter(|&&byte| byte == b' ').count();
+  let new_len = buffer.len() + (SPACE_REPLACEMENT.len() - 1) * space_count;
+  buffer.resize(new_len, b'\0');
+
+  let mut write_pos = new_len;
+
+  for read_pos in (0..old_len).rev() {
+    let byte = buffer[read_pos];
+
+    if byte == b' ' {
+      write_pos -= SPACE_REPLACEMENT.len();
+      buffer[write_pos..write_pos + REPL_LENGTH].
+        copy_from_slice(SPACE_REPLACEMENT);
+    } else {
+      write_pos -= 1;
+      buffer[write_pos] = byte;
+    }
+  }
+  *text = String::from_utf8(buffer).expect("invalid UTF-8 during URL-ification");
+}
+
+#[allow(dead_code)]
+fn space_20_unsafe(sentence: &mut String) {
   if !sentence.is_ascii() {
     panic!("Invalid string");
   }
@@ -16,7 +46,6 @@ fn space_20(sentence: &mut String) {
 
   let sentence_len = sentence.len();
   sentence.push_str(&"*".repeat(char_count*2)); // filling string with * so that bytes array becomes of required size.
-  .
   unsafe {
     let bytes = sentence.as_bytes_mut();
 
